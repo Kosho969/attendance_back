@@ -1,12 +1,14 @@
 from datetime import datetime
+from enum import Enum
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+    must_change_password: bool
 
     model_config = {"from_attributes": True}
 
@@ -40,6 +42,26 @@ class LoginIn(BaseModel):
 class TokenResponse(BaseModel):
     user: UserOut
     token: str
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    password: str
+    password_confirmation: str
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
+
+    @field_validator("password_confirmation")
+    @classmethod
+    def passwords_match(cls, v: str, info) -> str:
+        if "password" in info.data and v != info.data["password"]:
+            raise ValueError("Password confirmation does not match.")
+        return v
 
 
 class ActivityCreate(BaseModel):
@@ -111,3 +133,67 @@ class CheckinResult(BaseModel):
     attendee: AttendeeOut
     checked_in_at: datetime
     already_checked_in: bool
+    event_survey_completed: bool
+
+
+class DesiredLevel(str, Enum):
+    bajo = "bajo"
+    intermedio = "intermedio"
+    alto = "alto"
+
+
+class MostEnjoyed(str, Enum):
+    experiencia = "experiencia"
+    convivencia = "convivencia"
+    aprendizaje = "aprendizaje"
+
+
+class WorkshopSurveyIn(BaseModel):
+    email: EmailStr
+    enjoyment: int = Field(ge=1, le=5)
+    learning: int = Field(ge=1, le=5)
+    applicability: int = Field(ge=1, le=5)
+    second_part_wanted: bool
+    instructor_competence: int = Field(ge=1, le=5)
+    workshop_suggestion: str | None = None
+    instructor_suggestion: str | None = None
+
+
+class WorkshopSurveyOut(BaseModel):
+    id: int
+    activity_id: int
+    enjoyment: int
+    learning: int
+    applicability: int
+    second_part_wanted: bool
+    instructor_competence: int
+    workshop_suggestion: str | None
+    instructor_suggestion: str | None
+    created_at: datetime
+    attendee: AttendeeOut
+
+    model_config = {"from_attributes": True}
+
+
+class EventSurveyIn(BaseModel):
+    email: EmailStr
+    overall_rating: int = Field(ge=1, le=5)
+    workshops_informative: int = Field(ge=1, le=5)
+    desired_level: DesiredLevel
+    would_participate_again: bool
+    interested_in_hosting: bool
+    most_enjoyed: MostEnjoyed
+
+
+class EventSurveyOut(BaseModel):
+    id: int
+    overall_rating: int
+    workshops_informative: int
+    desired_level: DesiredLevel
+    would_participate_again: bool
+    interested_in_hosting: bool
+    most_enjoyed: MostEnjoyed
+    created_at: datetime
+    attendee: AttendeeOut
+
+    model_config = {"from_attributes": True}

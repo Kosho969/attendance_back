@@ -6,10 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .database import Base, engine
-from .routers import activities, auth, checkin, users
+from .database import Base, engine, sync_schema
+from .routers import activities, auth, checkin, surveys, users
 
 Base.metadata.create_all(bind=engine)
+sync_schema()
 
 app = FastAPI(title="Attendance API")
 
@@ -35,8 +36,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Keep {"message": ...} for plain-string errors, {"errors": {...}} for field errors."""
-    if isinstance(exc.detail, dict) and "errors" in exc.detail:
+    """Pass structured detail dicts (e.g. {"errors": {...}} or {"message", "code"}) through as-is;
+    wrap plain-string details as {"message": ...}."""
+    if isinstance(exc.detail, dict):
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
 
@@ -45,6 +47,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(activities.router, prefix="/api")
 app.include_router(checkin.router, prefix="/api")
+app.include_router(surveys.router, prefix="/api")
 
 
 @app.get("/up")

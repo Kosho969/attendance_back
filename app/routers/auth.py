@@ -15,7 +15,12 @@ def register(data: schemas.RegisterIn, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=422, detail={"errors": {"email": ["Email is already registered."]}})
 
-    user = User(name=data.name, email=data.email, hashed_password=hash_password(data.password))
+    user = User(
+        name=data.name,
+        email=data.email,
+        hashed_password=hash_password(data.password),
+        must_change_password=False,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -41,4 +46,22 @@ def logout(current_user: User = Depends(get_current_user)):
 
 @router.get("/user", response_model=schemas.UserOut)
 def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.put("/user/password", response_model=schemas.UserOut)
+def change_password(
+    data: schemas.ChangePasswordIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=422, detail={"errors": {"current_password": ["Current password is incorrect."]}}
+        )
+
+    current_user.hashed_password = hash_password(data.password)
+    current_user.must_change_password = False
+    db.commit()
+    db.refresh(current_user)
     return current_user

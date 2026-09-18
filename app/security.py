@@ -47,3 +47,18 @@ def get_current_user(
         raise unauthorized
 
     return user
+
+
+def get_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """Like get_current_user, but blocks access until a forced password change is done.
+
+    Endpoints that must stay reachable while must_change_password is True
+    (GET /user, PUT /user/password, POST /logout) depend on get_current_user
+    directly instead of this.
+    """
+    if current_user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": "You must change your password before continuing.", "code": "password_change_required"},
+        )
+    return current_user

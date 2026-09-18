@@ -5,5 +5,31 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
-    command: sh -c "pip install --no-cache-dir -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      - "127.0.0.1:7000:7000"
+    environment:
+      DATABASE_URL: mysql+pymysql://${DB_USER:-attendance}:${DB_PASSWORD:-attendance}@db:3306/${DB_NAME:-attendance}?charset=utf8mb4
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-attendance}
+      MYSQL_USER: ${DB_USER:-attendance}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-attendance}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-attendance}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER:-attendance}", "-p${DB_PASSWORD:-attendance}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  db_data:

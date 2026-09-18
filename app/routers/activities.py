@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from .. import schemas
 from ..database import get_db
 from ..models import Activity, User
-from ..security import get_current_user
+from ..security import get_active_user
 
 router = APIRouter(tags=["activities"])
 
@@ -19,7 +19,7 @@ def get_activity_or_404(activity_id: int, db: Session) -> Activity:
 @router.get("/activities", response_model=list[schemas.ActivityOut])
 def list_activities(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_active_user),
 ):
     return db.query(Activity).order_by(Activity.created_at.desc()).all()
 
@@ -28,7 +28,7 @@ def list_activities(
 def create_activity(
     data: schemas.ActivityCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_active_user),
 ):
     if db.get(User, data.host_id) is None:
         raise HTTPException(status_code=422, detail={"errors": {"host_id": ["Selected host does not exist."]}})
@@ -51,7 +51,7 @@ def create_activity(
 def get_activity(
     activity_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_active_user),
 ):
     return get_activity_or_404(activity_id, db)
 
@@ -61,7 +61,7 @@ def update_activity(
     activity_id: int,
     data: schemas.ActivityUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_active_user),
 ):
     activity = get_activity_or_404(activity_id, db)
 
@@ -80,7 +80,7 @@ def update_activity(
 def delete_activity(
     activity_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_active_user),
 ):
     activity = get_activity_or_404(activity_id, db)
     db.delete(activity)
@@ -91,7 +91,7 @@ def delete_activity(
 def list_attendances(
     activity_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_active_user),
 ):
     activity = get_activity_or_404(activity_id, db)
     return sorted(activity.attendances, key=lambda a: a.checked_in_at, reverse=True)

@@ -47,4 +47,5 @@ def submit_checkin(token: str, data: schemas.CheckinIn, db: Session = Depends(ge
         "attendee": attendee,
         "checked_in_at": attendance.checked_in_at,
         "already_checked_in": already_checked_in,
+        "event_survey_completed": attendee.event_survey is not None,
     }
